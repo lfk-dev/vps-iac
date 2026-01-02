@@ -1,0 +1,104 @@
+# Traefik is a rproxy for the whole docker engine
+# All traffic comes through it
+
+# Traefik configuration is done via commands
+# Required environment variables:
+#   - VPS_DOMAIN - custom or from cloud provider
+#   - TRAEFIK_DASHBOARD_HASH - htpasswd hash (with escape characters for yaml)
+#   - ACME_EMAIL - email for Let's Encrypt
+
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80" # http->https redirect
+      - "443:443"
+      - "8080:8080" # traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
+      - ./letsencrypt:/letsencrypt # to preserve generated certs
+    environment:
+      # maps host var env to container's, can be ommited if names are the same
+      - VPS_DOMAIN
+      - TRAEFIK_DASHBOARD_HASH
+      - ACME_EMAIL
+    command:
+      # EntryPoints with http --> https redirection
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+      # TLS encryption/decryption happens here (it's L7 rproxy)
+
+      # Providers: enables docker, disables auto-discovery, works on proxy network
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+
+      # API & Dashboard: requires SSL cert for the domain
+      - "--api=true"
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+
+      # Observability:
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+
+      # Let's Encrypt certs
+      - "--certificatesresolvers.myresolver.acme.email=$ACME_EMAIL"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+
+      # Traefik, handles the challange itself, as well as auto renewal
+      # IMPORTANT: it will generate the cert for the any subdomain with tls=true
+
+    labels:
+      - "traefik.enable=true" # opt-in to traefik discovery
+
+      # Dashboard router
+      # api@internal means a service internal to traefik container called api
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.$VPS_DOMAIN`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=myresolver"
+
+      # Basic-auth middleware
+      # The @docker specifies where the middleware is defined (here with docker labels)
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=$TRAEFIK_DASHBOARD_HASH"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true" # include in traefik discovery
+      - "traefik.http.routers.whoami.rule=Host(`whoami.$VPS_DOMAIN`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls=true"
+      # Without this line, traefik will self-generate certs
+      # this specifies the ACME that we configured in traefik container
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+
+      # This is confusing, but tls=true, specifies that the subdomain
+      # in this router needs SSL cert. Based on that option, traefik
+      # will generate the let's encrypt cert.
+
+      # Routers not only route, but define the whole route from entrypoint
+      # to the service.
+
+networks:
+  proxy:
+    name: proxy
