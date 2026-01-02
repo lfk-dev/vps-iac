@@ -1,0 +1,44 @@
+# easingthemes/ssh-deploy uses node.js to wrap ssh+rsync, but I want to test out manual setup
+# to test my skills and understanding
+
+# https://github.com/marketplace/actions/rsync-deployments-action
+
+# Secrets:
+#   SSH_KEY_VPS - private key for VPS
+#   VPS_DOMAIN - domain of VPS
+#   VPS_PORT - port for SSH
+#   VPS_USER - user for SSH
+#   VPS_DEPLOYMENT_PATH - path to sync
+
+name: Sync to VPS
+
+on:
+  workflow_dispatch: # temp
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Setup SSH key
+        # todo: maybe i have to make the .ssh dir myself?
+        # copy key value to file, set permissions (no execute)
+        # fetch public key from VPS to build known hosts without interactive prompt
+        run: |
+          printf '%s\n' "${{ secrets.SSH_KEY_VPS }}" > ~/.ssh/id_ed25519 
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_DOMAIN }} >> ~/.ssh/known_hosts
+      - name: Sync with rsync
+        # todo: check if i need to adjust permissions/ownership
+        # rsync with custom terminal (SSH port + key). Used verbose options for better understanding
+        run: |
+          set -euo pipefail # failsafe
+          set -x # print commands
+          rsync \
+          --archive \ # recursion with perservation
+          --delete \ # delete files not present
+          --compress \ # compress to save bandwith
+          -e "ssh -p ${{ secrets.VPS_PORT }} -i ~/.ssh/id_ed25519"
+          ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/home/${{ secrets.VPS_USER }}/${{ secrets.VPS_DEPLOYMENT_PATH }}
