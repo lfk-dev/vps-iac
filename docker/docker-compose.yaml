@@ -23,7 +23,7 @@ services:
       - "0.0.0.0:8080:8080" # traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
-      - ./letsencrypt:/letsencrypt # to preserve generated certs
+      - ./volumes/letsencrypt:/letsencrypt # to preserve generated certs
     # Variables used below with ${} are subsituted by docker-compose based on .env file
     # No need to map them as env vars
     command:
@@ -71,6 +71,7 @@ services:
 
       # Basic-auth middleware
       # The @docker specifies where the middleware is defined (here with docker labels)
+      # DO NOT ADD THE ESCAPE $ TO THE HASH! docker-compose does it automatically :)
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
@@ -97,6 +98,21 @@ services:
       # Routers not only route, but define the whole route from entrypoint
       # to the service.
 
+  kuma:
+    image: louislam/uptime-kuma:2
+    container_name: kuma
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # dev.subdomain is used for all deployments that are temporary. Using path filtering/routing.
+      - "traefik.http.routers.kuma.rule=Host(`dev.${VPS_DOMAIN}`) && (PathPrefix(`/kuma`) || PathPrefix(`/kuma/`))"
+      - "traefik.http.routers.kuma.entrypoints=websecure"
+      - "traefik.http.routers.kuma.tls=true"
+      - "traefik.http.routers.kuma.tls.certresolver=myresolver"
+    volumes:
+      - ./volumes/kuma:/app/data
 networks:
   proxy:
     name: proxy
