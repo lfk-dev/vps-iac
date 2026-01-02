@@ -58,8 +58,8 @@ services:
       # Traefik, handles the challange itself, as well as auto renewal
       # IMPORTANT: it will generate the cert for the any subdomain with tls=true
 
+
     labels:
-      - "traefik.enable=true" # opt-in to traefik discovery
 
       # Dashboard router
       # api@internal means a service internal to traefik container called api
