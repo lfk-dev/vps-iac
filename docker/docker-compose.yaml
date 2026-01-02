@@ -23,11 +23,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
       - ./letsencrypt:/letsencrypt # to preserve generated certs
-    environment:
-      # maps host var env to container's, can be ommited if names are the same
-      - VPS_DOMAIN
-      - TRAEFIK_DASHBOARD_HASH
-      - ACME_EMAIL
+    # Variables used below with ${} are subsituted by docker-compose based on .env file
+    # No need to map them as env vars
     command:
       # EntryPoints with http --> https redirection
       - "--entrypoints.web.address=:80"
@@ -66,7 +63,7 @@ services:
 
       # Dashboard router
       # api@internal means a service internal to traefik container called api
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.$VPS_DOMAIN`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${VPS_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
@@ -74,7 +71,7 @@ services:
 
       # Basic-auth middleware
       # The @docker specifies where the middleware is defined (here with docker labels)
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=$TRAEFIK_DASHBOARD_HASH"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
   whoami:
@@ -85,7 +82,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true" # include in traefik discovery
-      - "traefik.http.routers.whoami.rule=Host(`whoami.$VPS_DOMAIN`)"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.${VPS_DOMAIN}`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls=true"
       # Without this line, traefik will self-generate certs
