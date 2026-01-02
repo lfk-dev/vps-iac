@@ -23,10 +23,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Setup SSH key
-        # todo: maybe i have to make the .ssh dir myself?
         # copy key value to file, set permissions (no execute)
         # fetch public key from VPS to build known hosts without interactive prompt
         run: |
+          mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_KEY_VPS }}" > ~/.ssh/id_ed25519 
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.VPS_DOMAIN }} >> ~/.ssh/known_hosts
