@@ -13,7 +13,12 @@
 name: Sync to VPS
 
 on:
-  workflow_dispatch: # temp
+  push:
+    branches:
+      - main
+      - feature/*
+
+# no need for concurenncy, the sync should finish first
 
 jobs:
   sync:
