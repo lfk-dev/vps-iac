@@ -47,5 +47,7 @@ jobs:
           --compress \
           --exclude=".git" \
           --exclude=".github" \
+          --exclude="letsencrypt" \
+          --exclude=".env" \
           -e "ssh -p ${{ secrets.VPS_PORT }} -i ~/.ssh/id_ed25519" \
           ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/home/${{ secrets.VPS_USER }}/${{ secrets.VPS_DEPLOYMENT_PATH }}
