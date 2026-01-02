@@ -62,6 +62,7 @@ services:
     labels:
       # Dashboard router
       # api@internal means a service internal to traefik container called api
+      - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.${VPS_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
@@ -90,7 +91,8 @@ services:
 
       # This is confusing, but tls=true, specifies that the subdomain
       # in this router needs SSL cert. Based on that option, traefik
-      # will generate the let's encrypt cert.
+      # will generate the let's encrypt cert. But the route from traefik to the service
+      # with that subdomain does not uses TLS.
 
       # Routers not only route, but define the whole route from entrypoint
       # to the service.
