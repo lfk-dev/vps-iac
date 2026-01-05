@@ -23,7 +23,7 @@ services:
       - "0.0.0.0:8080:8080" # traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
-      - traefik_letsencrypt:/letsencrypt # to preserve generated certs
+      - letsencrypt:/letsencrypt # to preserve generated certs
     # Variables used below with ${} are subsituted by docker-compose based on .env file
     # No need to map them as env vars
     command:
@@ -102,6 +102,6 @@ networks:
   proxy:
     name: proxy
 
+# volume name will be <project>_name, so `traefik_letsencrypt` will be `vps_letsencrypt`
 volumes:
-  traefik_letsencrypt:
-    name: traefik_letsencrypt
+  letsencrypt:
