@@ -13,6 +13,10 @@ on:
         default: deploy
         options: [deploy, roll-back, remove]
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # that is the default, but left for clarity
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
