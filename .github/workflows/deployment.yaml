@@ -1,0 +1,56 @@
+# Workflow for automatic deployment to VPS
+# It has to be triggered manually for safety, uses 3 options: deploy, roll-back and remove
+
+name: deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Action to perform
+        required: true
+        type: choice
+        default: deploy
+        options: [deploy, roll-back, remove]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
+    steps:
+      - name: Checkout
+        with:
+          fetch-depth: 2 # setup for roll-back
+        uses: actions/checkout@v5
+
+      - name: SSH setup
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY_VPS }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
+
+        # TODO: could be improved with tags or even artifact that contains a specifc SHA,
+        # but for now I think it's more important to just finish an implementation, not constantly improve
+      - name: Roll back
+        if: ${{ inputs.action == 'roll-back' }}
+        run: |
+          git checkout HEAD^
+
+      - name: Move secrets from GHA to .env
+        run: |
+          # printf prevents issues with echo, POSIX compliant
+          printf '%s\n' "${{ secrets.SERVICE_SECRETS_FILE }}" > docker/.env
+
+      - name: Deploy
+        if: ${{ inputs.action == 'deploy' }} || ${{ inputs.action == 'roll-back' }}
+        run: ./scripts/deploy.sh
+
+      - name: Remove
+        if: ${{ inputs.action == 'remove' }}
+        run: ./scripts/remove.sh
+
+      # added security, although runners don't persist data
+      - name: Clean up
+        run: rm -f docker/.env
