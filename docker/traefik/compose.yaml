@@ -76,27 +76,17 @@ services:
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
   whoami:
-    image: traefik/whoami
-    container_name: whoami
+    image: nginx:1.28-alpine
+    container_name: alpine
     restart: unless-stopped
     networks:
       - proxy
-    labels:
+    labels: # the old subdomain stays for alpine
       - "traefik.enable=true" # include in traefik discovery
       - "traefik.http.routers.whoami.rule=Host(`whoami.${VPS_DOMAIN}`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls=true"
-      # Without this line, traefik will self-generate certs
-      # this specifies the ACME that we configured in traefik container
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
-
-      # This is confusing, but tls=true, specifies that the subdomain
-      # in this router needs SSL cert. Based on that option, traefik
-      # will generate the let's encrypt cert. But the route from traefik to the service
-      # with that subdomain does not uses TLS.
-
-      # Routers not only route, but define the whole route from entrypoint
-      # to the service.
 
 networks:
   proxy:
