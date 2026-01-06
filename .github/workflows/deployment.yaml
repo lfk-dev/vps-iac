@@ -40,9 +40,10 @@ jobs:
           git checkout HEAD^
 
       - name: Move secrets from GHA to .env
-        run: |
-          # printf prevents issues with echo, POSIX compliant
-          printf '%s\n' "${{ secrets.SERVICE_SECRETS_FILE }}" > docker/.env
+        # this is safest way to handle special characters from .env file, especially $.
+        # otherwise I have to remeber to always escape any string with `$` in it
+        # docker compose does not respect single quotes and expands every literal
+        run: printf '%s\n' '${{ secrets.DC_ENV_FILE }}' | base64 -d > docker/.env
 
       - name: Deploy
         if: ${{ inputs.action == 'deploy' }}
