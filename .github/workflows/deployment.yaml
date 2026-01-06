@@ -17,6 +17,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      # setup the connection for docker client
       DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
     steps:
       - name: Checkout
@@ -32,7 +33,7 @@ jobs:
           ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
 
         # TODO: could be improved with tags or even artifact that contains a specifc SHA,
-        # but for now I think it's more important to just finish an implementation, not constantly improve
+        # but for now I think it's more important to just finish one implementation, not constantly improve
       - name: Roll back
         if: ${{ inputs.action == 'roll-back' }}
         run: |
@@ -44,12 +45,18 @@ jobs:
           printf '%s\n' "${{ secrets.SERVICE_SECRETS_FILE }}" > docker/.env
 
       - name: Deploy
-        if: ${{ inputs.action == 'deploy' }} || ${{ inputs.action == 'roll-back' }}
-        run: ./scripts/deploy.sh
+        if: ${{ inputs.action == 'deploy' }}
+        run: ./scripts/deployment/deploy.sh
+
+        # ther are no NOT or OR functions in GHA
+        # this could be combined with Deploy step
+      - name: Roll back
+        if: ${{ inputs.action == 'roll-back' }}
+        run: ./scripts/deployment/deploy.sh
 
       - name: Remove
         if: ${{ inputs.action == 'remove' }}
-        run: ./scripts/remove.sh
+        run: ./scripts/deployment/remove.sh
 
       # added security, although runners don't persist data
       - name: Clean up
