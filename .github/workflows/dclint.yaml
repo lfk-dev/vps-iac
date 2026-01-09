@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+      - feature/* # for feature branches
     paths:
-      - "docker/**" # only trigger if there where any changes to docker files
+      - "docker/*.yaml" # only trigger if there where any changes to docker files
+
   workflow_dispatch:
+
 jobs:
   dclint:
     runs-on: ubuntu-latest

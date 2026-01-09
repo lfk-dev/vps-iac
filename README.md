@@ -9,13 +9,19 @@ This repository contains IaC for my personal VPS running self-hosted services.
     - reverse proxy(L7)
     - automatic TLS certification 
 - **Services**:
-    - `whoami` - test service
+    - `nginx:alpine` - test service
+    - `kanboard` - kanban board for personal use
+- **Secrets management**:
+    1. Local file on my machine contains the key-value pairs of secrets
+    2. Local script is used to update the GHA secrets via SSH
+    3. Deployment workflow loads the GHA secrets to .env file in a runner.
+    4. Secrets only persist while Docker Compose is executed on the runner.
+- **CI/CD**: GitHub Actions
+    - Manually triggered deployment of the services from GH Actions
+    - Docker compose validation
+
 
 ### Planned / in progress
-- **CI/CD**: GitHub Actions
-    - Docker compose validation
-    - Shell linting
-    - Automated deployment via SSH
 - **Configuration management**: Ansible
     - `fail2ban` configuration
     - user and groups management
@@ -36,6 +42,7 @@ The goal of the project was to achieve highly replicable, reliable and well-docu
 ## Repository structure
 - `docs/` - documentation and infrastructure planning
 - `docker/` - docker compose files
+- `scripts/` - scripts both for local and remote execution
 - `.github/workflows/` - GitHub Actions workflows
 
 
