@@ -1,0 +1,34 @@
+---
+# this is just list of tasks (not a playbook !)
+
+# this ensures right order  (first update then check/install)
+- name: Install fail2ban
+  apt:
+    update_cache: true
+    name: fail2ban
+    state: present
+
+# jail.local is default global settings
+- name: Copy fail2ban jail.local
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644" # standard for conf files
+
+# sshd specific settings
+- name: Copy fail2ban sshd.conf
+  template:
+    src: sshd.conf.j2
+    dest: /etc/fail2ban/jail.d/sshd.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+# "restarted" will always restart the service
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+    enabled: true # just to be sure
