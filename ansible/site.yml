@@ -1,6 +1,0 @@
----
-- name: fail2ban config
-  hosts: stable
-  become: true # all tasks actually need sudo, so it's still safe
-  roles:
-    - fail2ban

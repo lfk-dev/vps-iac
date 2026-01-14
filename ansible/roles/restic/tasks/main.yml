@@ -1,0 +1,78 @@
+---
+# There are restic roles from community, but I wanted to
+# handle scripts and cronjobs manually to get expirence.
+- name: Restic and repo init
+  tags: init # tags are used so we can initilize the repo or check up on it
+  block:
+    - name: Install restic
+      become: true
+      apt:
+        name: restic
+        state: present
+
+    - name: Check if repo exists
+      environment: # only persists during task execution
+        RESTIC_REPOSITORY: "s3:https://{{ restic_aws_endpoint }}/{{ restic_aws_bucket }}"
+        RESTIC_PASSWORD: "{{ vault_restic_password }}"
+        AWS_ACCESS_KEY_ID: "{{ vault_restic_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_restic_aws_secret_access_key }}"
+      command: restic cat config # there are multiple ways to check, but this seems the quickest
+      register: restic_check # captures all outputs under different subkeys
+      failed_when: false # the fail is not an error but feedback
+      changed_when: false # no change to the node happend
+
+    - name: Create init script
+      become: true
+      template:
+        src: restic_init.sh.j2
+        dest: /usr/local/bin/restic_init.sh
+        mode: "0700" # requires sudo to view plaintext passwords
+
+    - name: Run init script
+      become: true
+      when: restic_check.rc != 0 # if the repo does not exists
+      command: /usr/local/bin/restic_init.sh
+
+    - name: Create backup script
+      become: true # the backup script will be ran as root, because docker volumes are owned by root
+      template:
+        src: restic_backup.sh.j2
+        dest: /usr/local/bin/restic_backup.sh
+        mode: "0700"
+
+    # cron job is system wide and root owned
+    - name: Set up a cron job
+      become: true
+      cron:
+        user: root
+        cron_file: "restic-backup"
+        name: "Restic backup"
+        minute: "0"
+        hour: "*/1" # every hour
+        job: "/usr/local/bin/restic_backup.sh"
+        state: present
+# TODO: restic repository checks
+
+- name: Restic repository check
+  tags: check
+  block:
+    - name: Run restic snapshots
+      environment:
+        RESTIC_REPOSITORY: "s3:https://{{ restic_aws_endpoint }}/{{ restic_aws_bucket }}"
+        RESTIC_PASSWORD: "{{ vault_restic_password }}"
+        AWS_ACCESS_KEY_ID: "{{ vault_restic_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_restic_aws_secret_access_key }}"
+      command: restic snapshots
+      register: restic_snapshot_output
+      changed_when: false # don't trigger
+
+      # used msg module for nice formmating, debug shows JSON
+    - name: Print stdout
+      ansible.builtin.debug:
+        msg: |
+          {{ restic_snapshot_output.stdout }}
+
+    - name: Print stderr
+      ansible.builtin.debug:
+        msg: |
+          {{ restic_snapshot_output.stderr }}
