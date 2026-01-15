@@ -1,0 +1,60 @@
+# Comments are mix between example docker compose provided by Nextcloud and my own notes
+# source: https://github.com/nextcloud/all-in-one/blob/main/compose.yaml
+name: nextcloud-aio # Add the container to the same compose project like all the sibling containers are added to automatically.
+services:
+  nextcloud-aio-mastercontainer:
+    image: ghcr.io/nextcloud-releases/all-in-one:latest # TODO: shouldn't I pick a specific version?
+    init: true # This setting makes sure that signals from main process inside the container are correctly forwarded to children.
+    restart: always
+    container_name: nextcloud-aio-mastercontainer # This line is not allowed to be changed as otherwise AIO will not work correctly
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config # required by nc
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
+    ports:
+      # traefik binds on 0.0.0.0:8080 for it's dashboard. this binds on all ports, even localhost
+      - "127.0.0.1:8081:8080" # AIO master container panel is only reachable on localhost. This port mapping prevents public access to control panel.
+    environment:
+      # this vars, set the internal apache to communicate with traefik on custom port
+      APACHE_PORT: 11000 # custom port for apache container to expose
+      APACHE_IP_BINDING: 0.0.0.0 # bind to all CONTAINER interfaces (not host)
+      APACHE_ADDITIONAL_NETWORK: proxy # this informs the apache child-container that it should connect to proxy network
+      # AIO_DISABLE_BACKUP_SECTION: false # Setting this to true allows to hide the backup section in the AIO interface. See https://github.com/nextcloud/all-in-one#how-to-disable-the-backup-section
+      # BORG_RETENTION_POLICY: --keep-within=7d --keep-weekly=4 --keep-monthly=6 # Allows to adjust borgs retention policy. See https://github.com/nextcloud/all-in-one#how-to-adjust-borgs-retention-policy
+      # COLLABORA_SECCOMP_DISABLED: false # Setting this to true allows to disable Collabora's Seccomp feature. See https://github.com/nextcloud/all-in-one#how-to-disable-collaboras-seccomp-feature
+      # DOCKER_API_VERSION: 1.44 # You can adjust the internally used docker api version with this variable. ⚠️⚠️⚠️ Warning: please note that only the default api version (unset this variable) is supported and tested by the maintainers of Nextcloud AIO. So use this on your own risk and things might break without warning. See https://github.com/nextcloud/all-in-one#how-to-adjust-the-internally-used-docker-api-version
+      # FULLTEXTSEARCH_JAVA_OPTIONS: "-Xms1024M -Xmx1024M" # Allows to adjust the fulltextsearch java options. See https://github.com/nextcloud/all-in-one#how-to-adjust-the-fulltextsearch-java-options
+      # NEXTCLOUD_DATADIR: /mnt/ncdata # Allows to set the host directory for Nextcloud's datadir. ⚠️⚠️⚠️ Warning: do not set or adjust this value after the initial Nextcloud installation is done! See https://github.com/nextcloud/all-in-one#how-to-change-the-default-location-of-nextclouds-datadir
+      # NEXTCLOUD_MOUNT: /mnt/ # Allows the Nextcloud container to access the chosen directory on the host. See https://github.com/nextcloud/all-in-one#how-to-allow-the-nextcloud-container-to-access-directories-on-the-host
+      # NEXTCLOUD_UPLOAD_LIMIT: 16G # Can be adjusted if you need more. See https://github.com/nextcloud/all-in-one#how-to-adjust-the-upload-limit-for-nextcloud
+      # NEXTCLOUD_MAX_TIME: 3600 # Can be adjusted if you need more. See https://github.com/nextcloud/all-in-one#how-to-adjust-the-max-execution-time-for-nextcloud
+      # NEXTCLOUD_MEMORY_LIMIT: 512M # Can be adjusted if you need more. See https://github.com/nextcloud/all-in-one#how-to-adjust-the-php-memory-limit-for-nextcloud
+      SKIP_DOMAIN_VALIDATION: true # This should only be set to true if things are correctly configured. See https://github.com/nextcloud/all-in-one#how-to-skip-the-domain-validation
+      NEXTCLOUD_STARTUP_APPS: deck twofactor_totp tasks calendar contacts notes # fixes lack of apache container
+    # offical docs claim no support for traefik labels
+    # the solution proposed here seems to work: https://help.nextcloud.com/t/nextcloud-aio-traefik/226510/4
+    labels: # Traefik config
+      - traefik.enable=true
+
+      - traefik.http.routers.nextcloud.tls=true
+      - traefik.http.routers.nextcloud.tls.certresolver=myresolver
+      - traefik.http.routers.nextcloud.entrypoints=websecure
+      - traefik.http.routers.nextcloud.rule=Host(`nc.${VPS_DOMAIN}`)
+      - traefik.http.services.nextcloud.loadbalancer.server.url=http://nextcloud-aio-apache:11000
+      - traefik.http.middlewares.nc-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.nc-secure-headers.headers.hostsProxyHeaders=X-Forwarded-Host
+      - traefik.http.middlewares.nc-secure-headers.headers.referrerPolicy=same-origin
+      - traefik.http.middlewares.nc-chain.chain.middlewares=nc-redirect,nc-secure-headers
+      - traefik.http.routers.nextcloud.middlewares=nc-chain
+
+    # explanation: it's a normal router but without explicit target service. It uses any service configured in the same context,
+    # here a loadbalancer that has only one backend: <apache_container>:11000. The container name is resolved by docker engine.
+    # nc requires few middlewares to work properly
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer # This line is not allowed to be changed as otherwise the built-in backup solution will not work
+
+networks:
+  proxy:
+    external: true
