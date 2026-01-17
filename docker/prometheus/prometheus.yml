@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 1m
+
+scrape_configs:
+  - job_name: "prometheus"
+    scrape_interval: 1m
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+  # because the prometheus is on "monitroing" network, it will do DNS resolution for "node-exporter"
+  # and it will find the node-exporter container
+
+  - job_name: "traefik"
+    static_configs:
+      - targets: ["traefik:8082"]
+  # traefik needs and dedicated entrypoint (default name is just "traefik"), that specifies
+  # the port where metrics are exposed

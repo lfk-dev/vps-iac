@@ -1,0 +1,48 @@
+name: prometheus
+services:
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    restart: unless-stopped
+    container_name: prometheus
+    # TODO: seed the file into the volue during deployment
+    # Current solution needs a local copy of the prometheus.yml file on VPS, since you can't bind mount a file during
+    # github workflow deployment.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /home/ubuntu/test/prometheus.yml:/etc/prometheus/prometheus.yml #TODO: fix the plaintext, unmanaged bind mounted config files
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090" # SSH tunneling only to dashboard
+    networks:
+      - monitoring # seperate monitoring network
+
+  # Exporter mounts the node's directories that store OS information. Containerized exporter monitors those dirs and exposes API/metrics
+  # The prometheus container scrapes the metrics from exporter container
+  node-exporter:
+    image: prom/node-exporter:latest # TODO: find specific version
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc" # exporter commands
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)" # collector command
+      # node exporter monitors the mounted node's system dirs
+      # the last command specifies to exclude the container dirs (so the exporter does not monitor itself by mistake)
+    expose:
+      - 9100 # not "ports", but "expose", because it's internal to monitoring network only
+    networks:
+      - monitoring
+
+volumes:
+  data: {}
+  config: {}
+
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge

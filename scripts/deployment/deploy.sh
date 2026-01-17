@@ -9,7 +9,7 @@ cd docker
 
 for d in */ ; do
     echo "Deploying $d"
-    ( cd "$d" && docker compose --env-file ../.env up -d )
+    ( cd "$d" && pwd && ls -la && docker compose --env-file ../.env up -d )
 done
 
 cd ..
