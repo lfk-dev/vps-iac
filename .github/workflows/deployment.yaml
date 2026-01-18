@@ -51,6 +51,10 @@ jobs:
 
       - name: Deploy
         if: ${{ inputs.action == 'deploy' }}
+        env:
+          VPS_SSH_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_USER: ${{ secrets.VPS_USER }}
+          VPS_DOMAIN: ${{ secrets.VPS_DOMAIN }}
         run: ./scripts/deployment/deploy.sh
 
         # ther are no NOT or OR functions in GHA
