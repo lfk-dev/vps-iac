@@ -9,12 +9,16 @@ services:
     # github workflow deployment.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /home/ubuntu/test/prometheus.yml:/etc/prometheus/prometheus.yml #TODO: fix the plaintext, unmanaged bind mounted config files
-      - prometheus_data:/prometheus
+      - /etc/srv/configs/prometheus/:/etc/prometheus/ # deploy.sh copies the files to VPS, compose binds it to prometheus config dir
+      - data:/prometheus
     ports:
       - "127.0.0.1:9090:9090" # SSH tunneling only to dashboard
     networks:
       - monitoring # seperate monitoring network
+    command:
+      - "--storage.tsdb.retention.size=10GB" # max size of TSDB
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      # rule path is defined in the config
 
   # Exporter mounts the node's directories that store OS information. Containerized exporter monitors those dirs and exposes API/metrics
   # The prometheus container scrapes the metrics from exporter container
@@ -44,6 +48,7 @@ services:
     restart: unless-stopped
     networks:
       - monitoring
+      - proxy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.${VPS_DOMAIN}`)"
@@ -54,10 +59,13 @@ services:
       - "traefik.http.routers.alertmanager.middlewares=alertmanager-auth@docker"
 
 volumes:
-  data: {}
-  config: {}
+  data:
+  config:
 
 networks:
   monitoring:
     name: monitoring
     driver: bridge
+  proxy:
+    name: proxy
+    external: true

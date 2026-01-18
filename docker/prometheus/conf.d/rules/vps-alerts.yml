@@ -1,0 +1,71 @@
+# The expressions may not up to the standards, they were an exercise in promQL for me.
+# I did not wanted to just paste the expressions from the internet.
+
+# TODO: switch to pre-made expressions; add more alerts
+groups:
+  - name: node-alerts
+    rules:
+      - alert: OOM occurred
+        expr: node_vmstat_oom_kill>=1
+        for: 0s # it mean's alert immedietly
+        keep_firing_for: 60m # it's for future dashboard, for basic telegram bots it doesn't matter
+        labels:
+          severity: critical # critical alerts trigger a telegram message
+
+      - alert: High sutained CPU usage
+        expr: avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) * 100 > 80
+        # avg() used to aggregate across all cores
+        # rate() calcuates the delta divided by time range (in seconds) with accounting for missed samples
+        # mode!="idle" checks all seconds spent in modes other then idle (so active CPU usage)
+        # * 100, converts to procentages for convinence
+
+        # This expression can be interpreted as: "if average cpu usage over 5m is higher than 80%, alert immediatly"
+        # this is better than using `for: 10m`, because presents real average, not sustained 80%> over 10 minutes
+
+        for: 0s
+        keep_firing_for: 60m
+        labels:
+          severity: warning
+
+      - alert: High sustained RAM usage
+        expr: (100 - ((node_memory_MemAvailable_bytes)/(node_memory_MemTotal_bytes))*100) > 70
+        for: 5m # here we don't take averages, if the usage is above 70% (consistently) for 5 minutes, then alert
+        keep_firing_for: 60m # for observability
+        labels:
+          severity: warning
+
+      - alert: Low storage capacity
+        expr: 100 -(node_filesystem_free_bytes{mountpoint="/"}/node_filesystem_size_bytes{mountpoint="/"})*100 > 80
+        for: 5m # i can't find case, except maybe some big temp files being created, that would need sustained 5 minutes
+        keep_firing_for: 60m
+        labels:
+          severity: warning
+
+      - alert: Network spike
+        # it triggers if the amount of packets recieved in last 10 minutes,
+        # is doulbe of what was recieved time slot from 10 minutes to 20 minutes ago
+        expr: rate(node_network_receive_packets_total{device="eth0"}[10m])/rate(node_network_receive_packets_total{device="eth0"}[10m] offset 10m)>2
+        for: 5m # this actually works great with rate()/rate(), since it also exludes temporary spikes
+        keep_firing_for: 60m
+        labels:
+          severity: warning
+
+  - name: Traefik alerts
+    rules:
+      - alert: Traefik spike in HTTP requests
+        expr: |
+          (sum(rate(traefik_entrypoint_requests_total[1m]))
+          /
+          sum(rate(traefik_entrypoint_requests_total[1m] offset 1h))) > 2
+        for: 0s
+        keep_firing_for: 60m
+        labels:
+          severity: warning
+
+      # TODO: find a better query, this looks at average over week, so it will increase very slowly
+      - alert: 404 responses
+        expr: sum(increase(traefik_service_requests_total{code=~"404|400"}[7d])) > 200
+        for: 5m
+        keep_firing_for: 60m
+        labels:
+          severity: warning
