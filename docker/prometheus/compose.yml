@@ -38,6 +38,21 @@ services:
     networks:
       - monitoring
 
+  alertmanager:
+    image: prom/alertmanager:v0.30.1
+    container_name: alertmanager
+    restart: unless-stopped
+    networks:
+      - monitoring
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.${VPS_DOMAIN}`)"
+      - "traefik.http.routers.alertmanager.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager.tls=true"
+      - "traefik.http.routers.alertmanager.tls.certresolver=myresolver"
+      - "traefik.middlewares.alertmanager-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
+      - "traefik.http.routers.alertmanager.middlewares=alertmanager-auth@docker"
+
 volumes:
   data: {}
   config: {}

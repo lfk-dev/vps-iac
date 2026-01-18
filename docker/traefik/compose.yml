@@ -67,11 +67,8 @@ services:
       # Dashboard router
       # api@internal means a service internal to traefik container called api
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.${VPS_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.tls.certresolver=myresolver"
+
+      # Dashboard is no longer routed! It's exposed only on localhost via port mapping (requires SSH tunnel)
 
       # Basic-auth middleware
       # The @docker specifies where the middleware is defined (here with docker labels)
