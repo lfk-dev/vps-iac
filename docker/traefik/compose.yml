@@ -25,6 +25,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
       - letsencrypt:/letsencrypt # to preserve generated certs
+      # - /etc/srv/configs/traefik:/etc/traefik # external config setup
     # Variables used below with ${} are subsituted by docker-compose based on .env file
     # No need to map them as env vars
     command:
