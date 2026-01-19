@@ -19,6 +19,14 @@ services:
       - "--storage.tsdb.retention.size=10GB" # max size of TSDB
       - "--config.file=/etc/prometheus/prometheus.yml"
       # rule path is defined in the config
+    labels:
+      - "traefik.enable=true" # include in traefik discovery
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${VPS_DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.prometheus-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
+      - "traefik.http.routers.prometheus.middlewares=prometheus-auth@docker"
 
   # Exporter mounts the node's directories that store OS information. Containerized exporter monitors those dirs and exposes API/metrics
   # The prometheus container scrapes the metrics from exporter container
@@ -55,7 +63,7 @@ services:
       - "traefik.http.routers.alertmanager.entrypoints=websecure"
       - "traefik.http.routers.alertmanager.tls=true"
       - "traefik.http.routers.alertmanager.tls.certresolver=myresolver"
-      - "traefik.middlewares.alertmanager-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
+      - "traefik.http.middlewares.alertmanager-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
       - "traefik.http.routers.alertmanager.middlewares=alertmanager-auth@docker"
 
 volumes:

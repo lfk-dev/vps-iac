@@ -21,7 +21,6 @@ services:
       # explicitly bind to all host interfaces
       - "0.0.0.0:80:80" # http->https redirect
       - "0.0.0.0:443:443"
-      - "127.0.0.1:8080:8080" # traefik dashboard, ssh tunneling only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
       - letsencrypt:/letsencrypt # to preserve generated certs
