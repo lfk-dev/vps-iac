@@ -57,6 +57,9 @@ services:
     networks:
       - monitoring
       - proxy
+    volumes:
+      - /etc/srv/configs/prometheus/:/etc/prometheus/
+      - alertmanager-data:/alertmanager
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.${VPS_DOMAIN}`)"
@@ -65,10 +68,13 @@ services:
       - "traefik.http.routers.alertmanager.tls.certresolver=myresolver"
       - "traefik.http.middlewares.alertmanager-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
       - "traefik.http.routers.alertmanager.middlewares=alertmanager-auth@docker"
+    command:
+      - "--config.file=/etc/prometheus/alertmanager/alertmanager.yml"
 
 volumes:
   data:
   config:
+  alertmanager-data:
 
 networks:
   monitoring:
