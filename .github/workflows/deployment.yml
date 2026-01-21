@@ -52,7 +52,7 @@ jobs:
         # 1. Execute with sudo on target for chown and chmod to work
         # 2. Don't preserve perms, set them on host
         # 3. Archive + delete, will overwrite/prune old files
-      - name: Copy the tempated files under specific path
+      - name: Copy the templated files under specific path
         run: |
           rsync -a --no-perms --delete \
             --rsync-path="sudo rsync" \

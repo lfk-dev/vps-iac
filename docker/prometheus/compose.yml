@@ -9,7 +9,7 @@ services:
     # github workflow deployment.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/srv/configs/prometheus/:/etc/prometheus/ # deploy.sh copies the files to VPS, compose binds it to prometheus config dir
+      - /etc/srv/prometheus/:/etc/prometheus/ # deploy.sh copies the files to VPS, compose binds it to prometheus config dir
       - data:/prometheus
     ports:
       - "127.0.0.1:9090:9090" # SSH tunneling only to dashboard
@@ -58,7 +58,7 @@ services:
       - monitoring
       - proxy
     volumes:
-      - /etc/srv/configs/prometheus/:/etc/prometheus/
+      - /etc/srv/prometheus/:/etc/prometheus/
       - alertmanager-data:/alertmanager
     labels:
       - "traefik.enable=true"
