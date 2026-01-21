@@ -17,4 +17,4 @@ route:
 receivers:
   - name: "discord"
     discord_configs:
-      - webhook_url: "https://discord.com/api/webhooks/1463457760254627941/-bXph0LOi_iRo-KtG_jM97Gx94swNLt4-gdosHloDkEM4G9H-5kh-Erc5_HfrWXfVOBu"
+      - webhook_url: ${PROM_ALERT_DISCORD_WEBHOOK}
