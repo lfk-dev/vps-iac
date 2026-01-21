@@ -8,7 +8,7 @@ groups:
       - alert: OOM occurred
         expr: node_vmstat_oom_kill>=1
         for: 0s # it mean's alert immedietly
-        keep_firing_for: 60m # it's for future dashboard, for basic telegram bots it doesn't matter
+        keep_firing_for: 60m # it's for the dashboard, for basic telegram bots it doesn't matter
         labels:
           severity: critical # critical alerts trigger a telegram message
 

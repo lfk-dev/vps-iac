@@ -43,35 +43,37 @@ deploy_project() {
     
     # Handle conf.d if it exists
     local conf_dir="${project_dir}/conf.d"
-    if [[ -d "$conf_dir" ]]; then
-        # Parse project name from compose config
-        project_name=$(docker compose --project-directory "$project_dir" config --format json 2>/dev/null | jq -r '.name // empty')
+    # if [[ -d "$conf_dir" ]]; then
+    #     # Parse project name from compose config
+    #     project_name=$(docker compose --project-directory "$project_dir" config --format json 2>/dev/null | jq -r '.name // empty')
         
-        if [[ -z "$project_name" ]]; then
-            echo "Warning: conf.d found but could not parse project name, skipping config copy" >&2
-        elif [[ ! "$project_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            echo "Error: Invalid project name '$project_name' - contains unsafe characters" >&2
-            return 1
-        else
-            echo "Copying config files to /etc/srv/configs/${project_name}/"
+    #     if [[ -z "$project_name" ]]; then
+    #         echo "Warning: conf.d found but could not parse project name, skipping config copy" >&2
+    #     elif [[ ! "$project_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    #         echo "Error: Invalid project name '$project_name' - contains unsafe characters" >&2
+    #         return 1
+    #     else
+    #         echo "Copying config files to /etc/srv/configs/${project_name}/"
             
-            # Create remote directory and copy files
-            # shellcheck disable=SC2029
-            # remove files first, to prevent failed copy
-            # chown is recursive, although should not be needed (<project_name> should be empty)
-            ssh -p "$VPS_SSH_PORT" "${VPS_SSH_USER}@${VPS_DOMAIN}" \
-                "sudo rm -rf '/etc/srv/configs/${project_name}' && sudo mkdir -p '/etc/srv/configs/${project_name}' && sudo chown -R ${VPS_SSH_USER} '/etc/srv/configs/${project_name}'" || {
-                echo "Error: Failed to create remote config directory" >&2
-                return 1
-            }
+    #         # Create remote directory and copy files
+    #         # shellcheck disable=SC2029
+    #         # remove files first, to prevent failed copy
+    #         # chown is recursive, although should not be needed (<project_name> should be empty)
+    #         ssh -p "$VPS_SSH_PORT" "${VPS_SSH_USER}@${VPS_DOMAIN}" \
+    #             "sudo rm -rf '/etc/srv/configs/${project_name}' && sudo mkdir -p '/etc/srv/configs/${project_name}' && sudo chown -R ${VPS_SSH_USER} '/etc/srv/configs/${project_name}'" || {
+    #             echo "Error: Failed to create remote config directory" >&2
+    #             return 1
+    #         }
             
-            scp -r -P "$VPS_SSH_PORT" "${conf_dir}/." \
-                "${VPS_SSH_USER}@${VPS_DOMAIN}:/etc/srv/configs/${project_name}/" || {
-                echo "Error: Failed to copy config files" >&2
-                return 1
-            }
-        fi
-    fi
+    #         scp -r -P "$VPS_SSH_PORT" "${conf_dir}/." \
+    #             "${VPS_SSH_USER}@${VPS_DOMAIN}:/etc/srv/configs/${project_name}/" || {
+    #             echo "Error: Failed to copy config files" >&2
+    #             return 1
+    #         }
+
+    #         echo "Config files copied successfully to /etc/srv/configs/${project_name}/"
+    #     fi
+    # fi
     
     # Run docker compose AFTER the config is copied (so the bind mount works) TODO: clean up the files from the VPS if the deployment fails
     if ! docker compose --project-directory "$project_dir" --env-file "${DOCKER_DIR}/.env" up -d; then
