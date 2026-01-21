@@ -70,6 +70,8 @@ deploy_project() {
                 echo "Error: Failed to copy config files" >&2
                 return 1
             }
+
+            echo "Config files copied successfully to /etc/srv/configs/${project_name}/"
         fi
     fi
     

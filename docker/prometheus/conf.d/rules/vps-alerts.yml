@@ -69,12 +69,3 @@ groups:
         keep_firing_for: 60m
         labels:
           severity: warning
-
-  - name: debug
-    rules:
-      - alert: The node is up and running
-        expr: sum(node_cpu_seconds_total) > 1
-        for: 5s
-        keep_firing_for: 24h
-        labels:
-          severity: debug
