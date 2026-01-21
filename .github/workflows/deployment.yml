@@ -43,7 +43,7 @@ jobs:
           touch ./export.sh
           printf '%s\n' '${{ secrets.BULK_CONFIG_VARS }}' > export.sh
           chmod +x export.sh
-          ./export.sh
+          source ./export.sh
 
       - name: Template config files
         run: ./scripts/deployment/template.sh
