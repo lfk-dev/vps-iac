@@ -36,6 +36,24 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
 
+        # Templates the files and outputs in {{ github.workspace }}/tmp
+        # TODO: adjust composite actions to work this way (copy directroy structure + template)
+      - name: Template config files
+        run: ./scripts/deployment/template.sh
+
+        # rsync is a gold mine of options :)
+        # 1. Execute with sudo on target for chown and chmod to work
+        # 2. Don't preserve perms, set them on host
+        # 3. Archive + delete, will overwrite/prune old files
+      - name: Copy the tempated files under specific path
+        run: |
+          rsync -a --no-perms --delete \
+            --rsync-path="sudo rsync" \
+            --chown=${VPS_USER}:${VPS_USER} \
+            --chmod=Du=rwx,Dgo=,Fu=rw,Fgo= \
+            -e "ssh -p ${VPS_PORT}" \
+            ./tmp/ ${VPS_USER}@${VPS_DOMAIN}:/etc/srv/
+
         # TODO: could be improved with tags or even artifact that contains a specifc SHA,
         # but for now I think it's more important to just finish one implementation, not constantly improve
       - name: Roll back
