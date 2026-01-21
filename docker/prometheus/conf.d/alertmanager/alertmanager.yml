@@ -1,0 +1,20 @@
+# alertmanager config
+# source: https://prometheus.io/docs/alerting/latest/configuration/
+
+# route means "for matching labels act sort it this way"
+# <route> block, can have global rules and specific rules per route under optional `routes` block
+# `global:` key defines the global connecitons specs, that don't need repeating in receivers
+
+route:
+  receiver: "discord" # send the alert to the discord recie
+  group_wait: 30s # the notifications from that route will be grouped and sent after 30 seconds
+  group_interval: 5m # the notifications from that route will be not resend for 5 minutes
+  repeat_interval: 1h # the notifications will fire one hour later if the alert is still active
+  group_by: ["alertname"] # default groups everything together (one message for multiple alerts)
+# Sot together this means:
+
+# recievers are objects that specify how to send the alert
+receivers:
+  - name: "discord"
+    discord_configs:
+      - webhook_url: "https://discordapp.com/api/webhooks/1462750857006153750/PXODpo_FoBm8K6OJ2Ch--gjsBWsiPJ0j7WIV-MIkyCJb3VZwhd29gwabgfeV3RNiI28y"
