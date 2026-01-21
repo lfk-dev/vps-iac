@@ -36,15 +36,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
 
-        # Templates the files and outputs in {{ github.workspace }}/tmp
         # TODO: adjust composite actions to work this way (copy directroy structure + template)
       - name: export secrets to env vars
         run: |
-          touch ./export.sh
-          printf '%s\n' '${{ secrets.BULK_CONFIG_VARS }}' > export.sh
-          chmod +x export.sh
-          source ./export.sh
+          printf '%s\n' '${{ secrets.BULK_CONFIG_VARS }}' >> $GITHUB_ENV
 
+        # Templates the files and outputs in {{ github.workspace }}/tmp
       - name: Template config files
         run: ./scripts/deployment/template.sh
 
