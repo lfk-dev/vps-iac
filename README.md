@@ -1,71 +1,94 @@
-# IaC for Personal VPS
+# Personal VPS Infrastructure
 
-This repository contains Infrastructure as Code for my personal VPS running self-hosted services.
+Production-grade infrastructure for self-hosted services, built with automation, security, and observability in mind.
 
-## Project Goal
+**Key highlights:**
+- Fully automated deployments via GitHub Actions + Ansible
+- TLS termination and routing with Traefik reverse proxy
+- Monitoring stack with Prometheus + Discord alerting
+- Encrypted secrets pipeline (ansible-vault -> GitHub Secrets -> runtime injection)
 
-Build highly replicable, reliable, and well-documented infrastructure deployment for a VPS hosting private services, demonstrating DevOps practices for portfolio purposes.
+## Why This Project?
+
+I built this to run my own services while developing hands-on experience with real-world DevOps practices: automation, security hardening, monitoring, and GitOps workflows.
+
+> [!IMPORTANT]
+> For portfolio purposes, I focused on breadth of tools and practices rather than depth in any single tool.
+> Future improvements are tracked in the [roadmap](#future-improvements) below.
+
 
 ## Tech Stack
 
-### Configuration Management
-- **Ansible**
-  - `fail2ban` configuration
-  - `ufw` firewall rules (**in progress**)
-  - SSH hardening (**in progress**)
-  - Volume backup management (**in progress**)
-
 ### Container Orchestration
-- **Docker Compose** - service deployment
-- **Traefik** - reverse proxy (L7) with automatic TLS certification
+- **Docker Compose** — service deployment and orchestration
+- **Traefik** — reverse proxy (L7) with automatic TLS certificate management
+
+### Configuration Management — Ansible
+- `fail2ban` configuration
+- `ufw` firewall rules
+- SSH hardening
+- Volume backup management with retention policies
+
+### CI/CD — GitHub Actions
+- Manual deployment workflow with environment targeting
+- Super-linter for code quality enforcement
+- Ansible playbook execution
+
+### Monitoring — Prometheus
+- Node Exporter for system metrics collection
+- Real-time notifications via Discord webhook
+- Alerting for node metrics and traefik (network usage)
+
 
 ### Services
-- `nginx:alpine` - test service
-- `kanboard` - kanban board
-- `nextcloud` - cloud storage (**in progress**)
-- `garage` - S3-compatible object storage (**in progress**)
-- `vaultwarden` - password manager (**in progress**)
-- `immich` - photo and video gallery (**in progress**)
+| Service | Description | Status |
+|---------|-------------|--------|
+| `nginx:alpine` | Test/demo service | ✅ Live |
+| `kanboard` | Kanban board for task management | ✅ Live |
+| `nextcloud` | Self-hosted cloud storage | ✅ Live |
+| `garage` | S3-compatible object storage | 🔧 Deploying |
+| `vaultwarden` | Password manager (Bitwarden-compatible) | 🔧 Configuring |
+| `immich` | Photo and video gallery | 📋 Planned |
 
-### CI/CD
-- **GitHub Actions**
-  - Manual deployment workflow
-  - Super-linter for code quality
-  - Ansible deployment (**in progress**)
 
 ### Secrets Management
-1. Secrets encrypted locally with Ansible Vault
+1. Secrets encrypted locally with `ansible-vault`
 2. Local script decrypts and uploads to GitHub Actions Secrets
-3. Deployment workflow loads secrets to `.env` file on runner
-4. Secrets only persist during Docker Compose execution
+3. Deployment workflow handles secrets injection to Docker Compose and configuration files templates
+4. Config files are copied to the host with proper permissions.
 
-### Planned
-- **Terraform** - VPS provisioning, DNS/firewall configuration, object storage for backups
-- **Prometheus** - metrics collection, Node Exporter for system metrics, basic alerting
 
 ## Repository Structure
 
-- `.github/workflows/` `- CI/CD pipelines`
-- `ansible/` `- Configuration management playbooks`
-- `docker/` `- Docker Compose files`
-- `docs/` `- Documentation and planning`
-- `scripts/` `- Automation scripts`
+| Directory | Purpose |
+|-----------|---------|
+| `.github/workflows/` | CI/CD pipelines |
+| `ansible/` | Configuration management playbooks |
+| `docker/` | Docker Compose service definitions |
+| `docs/` | Documentation and architecture decisions |
+| `scripts/` | Automation and utility scripts |
+| `configs/` | Configuration files for services | 
 
-## Roadmap
+## Future Improvements
 
-**Infrastructure**
-- Automatic Ansible inventory updates from Terraform outputs
-- Terraform provisioning and state management
+### High Priority
+- **Terraform** — VPS provisioning, DNS management, remote state
+- **Gitea Actions** — migrate CI/CD to self-hosted runner
+- **Automated inventory** — Ansible inventory generated from Terraform outputs
 
-**CI/CD**
-- Migrate to self-hosted Gitea Actions
-- Automatic security testing on push to main
-- Performance tests post-deployment
-- Staging environment with enhanced security
+### Security Enhancements
+- HashiCorp Vault for advanced secrets management
+- VPN gateway for production access restriction
+- Host audit system (auditd + notifications)
+  - SSH connection alerts with session details
+  - Sudo usage logging and analysis
+  - Failed login attempt notifications
 
-**Security**
-- Advanced secret management (HashiCorp Vault)
-- VPN gateway VPS for production access restriction
-
-**Operations**
-- Repository backup script to external object storage
+### Operational Improvements
+- Migrate cronjobs to systemd timer units
+- Automatic security scanning on push to main
+- Post-deployment performance tests
+- Staging environment with isolated network
+- Traefik configuration migration to YAML file
+- Repository backup to external object storage
+- (potenially): move to docker swarm in future for better config management
