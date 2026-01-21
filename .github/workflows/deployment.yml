@@ -39,7 +39,11 @@ jobs:
         # Templates the files and outputs in {{ github.workspace }}/tmp
         # TODO: adjust composite actions to work this way (copy directroy structure + template)
       - name: export secrets to env vars
-        run: printf '%s\n' '${{ secrets.DC_ENV_FILE }}' > export.sh && chmod +x export.sh && ./export.sh
+        run: |
+          touch ./export.sh
+          printf '%s\n' '${{ secrets.BULK_CONFIG_VARS }}' > export.sh
+          chmod +x export.sh
+          ./export.sh
 
       - name: Template config files
         run: ./scripts/deployment/template.sh
