@@ -57,7 +57,7 @@ jobs:
           rsync -a --no-perms --delete \
             --rsync-path="sudo rsync" \
             --chown=${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} \
-            --chmod=Du=rwx,Dgo=,Fu=rw,Fgo= \
+            --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r \
             -e "ssh -p ${{ secrets.VPS_PORT }}" \
             ./tmp/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/etc/srv/
 
