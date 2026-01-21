@@ -48,6 +48,11 @@ jobs:
       - name: Template config files
         run: ./scripts/deployment/template.sh
 
+      - name: Debug
+        run: |
+          ls -la ./tmp/
+          echo $PROM_ALERT_DISCORD_WEBHOOK
+
         # rsync is a gold mine of options :)
         # 1. Execute with sudo on target for chown and chmod to work
         # 2. Don't preserve perms, set them on host
