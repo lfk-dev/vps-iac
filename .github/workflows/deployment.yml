@@ -54,7 +54,7 @@ jobs:
         # 3. Archive + delete, will overwrite/prune old files
       - name: Copy the templated files under specific path
         run: |
-          rsync -a --no-perms --delete \
+          rsync -a --delete \
             --rsync-path="sudo rsync" \
             --chown=${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} \
             --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r \
