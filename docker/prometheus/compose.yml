@@ -9,8 +9,7 @@ services:
     # github workflow deployment.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/srv/prometheus/:/etc/prometheus/:ro # deploy.sh copies the files to VPS, compose binds it to prometheus config dir
-      - data:/prometheus
+      - config:/etc/prometheus/:ro
     networks:
       - monitoring # seperate monitoring network
       - proxy # traefik discovery network
@@ -26,7 +25,9 @@ services:
       - "traefik.http.routers.prometheus.tls.certresolver=myresolver"
       - "traefik.http.middlewares.prometheus-auth.basicauth.users=${TRAEFIK_DASHBOARD_HASH}"
       - "traefik.http.routers.prometheus.middlewares=prometheus-auth@docker"
-
+    depends_on:
+      config-loader:
+        condition: service_completed_successfully
   # Exporter mounts the node's directories that store OS information. Containerized exporter monitors those dirs and exposes API/metrics
   # The prometheus container scrapes the metrics from exporter container
   node-exporter:
@@ -57,7 +58,7 @@ services:
       - monitoring
       - proxy
     volumes:
-      - /etc/srv/prometheus/:/etc/prometheus/:ro
+      - config:/etc/prometheus/:ro
       - alertmanager-data:/alertmanager
     labels:
       - "traefik.enable=true"
@@ -69,6 +70,23 @@ services:
       - "traefik.http.routers.alertmanager.middlewares=alertmanager-auth@docker"
     command:
       - "--config.file=/etc/prometheus/alertmanager/alertmanager.yml"
+
+  config-loader:
+    image: alpine
+    volumes:
+      - config:/config
+      - /etc/srv/prometheus/:/source/:ro
+    command:
+      [
+        "sh",
+        "-c",
+        "rm -rf /config/* && cp -r /source/* /config/ && chmod -R a+rX /config/",
+      ]
+  # NOTE: This is a workaround for unpredictable ownership patterns inside containers
+  # Bind mounts use 1:1 mapping of ownership and permissions, so that would
+  # require to check every image to see what UID:GID is required.
+  # This solves the issues by making the files readable and directories
+  # readable and executable for all.
 
 volumes:
   data:

@@ -24,7 +24,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
       - letsencrypt:/letsencrypt # to preserve generated certs
-      - /etc/srv/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - config:/etc/traefik:ro
     # Variables used below with ${} are subsituted by docker-compose based on .env file
     # No need to map them as env vars
     command:
@@ -59,6 +59,22 @@ services:
       - "traefik.http.routers.whoami.tls=true"
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
 
+  config-loader:
+    image: alpine
+    volumes:
+      - config:/config
+      - /etc/srv/traefik/:/source/:ro
+    command:
+      [
+        "sh",
+        "-c",
+        "rm -rf /config/* && cp -r /source/* /config/ && chmod -R a+rX /config/",
+      ]
+  # NOTE: This is a workaround for unpredictable ownership patterns inside containers
+  # Bind mounts use 1:1 mapping of ownership and permissions, so that would
+  # require to check every image to see what UID:GID is required.
+  # This solves the issues by making the files readable and directories
+  # readable and executable for all.
 networks:
   proxy:
     name: proxy
@@ -67,4 +83,5 @@ networks:
 
 # volume name will be <project>_name, so `traefik_letsencrypt` will be `vps_letsencrypt`
 volumes:
+  config:
   letsencrypt:
