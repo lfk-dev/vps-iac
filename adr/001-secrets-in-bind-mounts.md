@@ -17,11 +17,16 @@ Some Docker containers require configuration files that cannot be fully managed 
 ## Decision
 
 Bind mounts with templated configuration files.
+**Security note:**
+- Storing the configuration files on the node in plaintext without proper permissions can pose a security risk
+- Making the files non-readable to "others" can break some container images that don't use common 1000:1000 UID:GID pattern
+- To solve that issue the init container called `config-loader` is used, to copy the files from the node into the named volume and adjust permissions
 
+**Flow**:
 - Config files are stored as templates in the GitHub repository (secrets excluded)
 - During deployment, GitHub Actions injects secrets from GitHub Actions Secrets
 - Files are copied with proper permissions and ownership to the host via rsync over SSH
-- Docker Compose bind-mounts these files into containers
+- Init container copies the files to the named volume with proper permissions
 
 ## Consequences
 
@@ -37,4 +42,4 @@ Bind mounts with templated configuration files.
 - The project is single user and single node in nature. There is limited scaling needed
 
 **Migration path:**
-- If scaling beyond single node, migrate to Swarm secrets or Kubernetes secrets
+- The issue could be solved with upgrading to Docker Swarm or creating custom GHA Workflow that can handle seeding the files to volumes
