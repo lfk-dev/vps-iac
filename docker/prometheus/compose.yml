@@ -11,10 +11,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/srv/prometheus/:/etc/prometheus/:ro # deploy.sh copies the files to VPS, compose binds it to prometheus config dir
       - data:/prometheus
-    ports:
-      - "127.0.0.1:9090:9090" # SSH tunneling only to dashboard
     networks:
       - monitoring # seperate monitoring network
+      - proxy # traefik discovery network
     command:
       - "--storage.tsdb.retention.size=10GB" # max size of TSDB
       - "--config.file=/etc/prometheus/prometheus.yml"

@@ -24,44 +24,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # traefik docker discovery
       - letsencrypt:/letsencrypt # to preserve generated certs
-      # - /etc/srv/configs/traefik:/etc/traefik # external config setup
+      - /etc/srv/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
     # Variables used below with ${} are subsituted by docker-compose based on .env file
     # No need to map them as env vars
     command:
-      # EntryPoints with http --> https redirection
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.websecure.http.tls=true"
-      # TLS encryption/decryption happens here (it's L7 rproxy)
-
-      # Providers: enables docker, disables auto-discovery, works on proxy network
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=proxy"
-
-      # API & Dashboard: requires SSL cert for the domain
-      - "--api=true"
-      - "--api.insecure=false"
-      - "--api.dashboard=true"
-
-      # Observability:
-      - "--log.level=INFO"
-      - "--accesslog=true"
-
-      # Metrics:
-      - "--entrypoints.traefik.address=:8082"
-      - "--metrics.prometheus=true"
-
-      # Let's Encrypt certs
-      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-
-      # Traefik, handles the challange itself, as well as auto renewal
-      # IMPORTANT: it will generate the cert for the any subdomain with tls=true
+    # static configuration moved to external file bind mounted
 
     labels:
       # Dashboard router

@@ -1,0 +1,41 @@
+# Static config for traefik
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    http:
+      tls: {}
+  traefik:
+    address: ":8082" # exposed to monitoring network, but not on host
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: proxy
+
+api:
+  dashboard: true
+  insecure: false
+
+log:
+  level: INFO
+
+accessLog: {}
+
+metrics:
+  prometheus: {}
+
+certificatesResolvers:
+  myresolver:
+    acme:
+      email: "${ACME_EMAIL}" # add the variable to configs_secrets.txt
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web

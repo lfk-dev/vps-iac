@@ -1,6 +1,8 @@
 # Workflow for automatic deployment to VPS
 # It has to be triggered manually for safety, uses 3 options: deploy, roll-back and remove
 
+# TODO: rollback and remove actions have to be adjusted to new
+# deploy script structure
 name: deployment
 
 on:
@@ -60,12 +62,10 @@ jobs:
             -e "ssh -p ${{ secrets.VPS_PORT }}" \
             ./tmp/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/etc/srv/
 
-        # TODO: could be improved with tags or even artifact that contains a specifc SHA,
-        # but for now I think it's more important to just finish one implementation, not constantly improve
-      - name: Roll back
-        if: ${{ inputs.action == 'roll-back' }}
-        run: |
-          git checkout HEAD^
+      # - name: Roll back
+      #   if: ${{ inputs.action == 'roll-back' }}
+      #   run: |
+      #     git checkout HEAD^
 
       - name: Move secrets from GHA to .env
         # this is safest way to handle special characters from .env file, especially $.
@@ -83,13 +83,13 @@ jobs:
 
         # ther are no NOT or OR functions in GHA
         # this could be combined with Deploy step
-      - name: Roll back
-        if: ${{ inputs.action == 'roll-back' }}
-        run: ./scripts/deployment/deploy.sh
+      # - name: Roll back
+      #   if: ${{ inputs.action == 'roll-back' }}
+      #   run: ./scripts/deployment/deploy.sh
 
-      - name: Remove
-        if: ${{ inputs.action == 'remove' }}
-        run: ./scripts/deployment/remove.sh
+      # - name: Remove
+      #   if: ${{ inputs.action == 'remove' }}
+      #   run: ./scripts/deployment/remove.sh
 
       # added security, although runners don't persist data
       - name: Clean up
