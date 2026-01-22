@@ -17,7 +17,7 @@ services:
     environment:
       # `postgress://` is the protocol, `kanboard:kanboard-secret` is the login:password for DB
       # `db` is the hostname in docker (`db` is the service name), and `\kanboard` is the database name
-      DATABASE_URL: postgres://kanboard:kanboard-secret@db/kanboard
+      DATABASE_URL: postgres://${KANBOARD_DB_USER}:${KANBOARD_DB_PASSWORD}@db/kanboard
     depends_on:
       db:
         condition: service_healthy
@@ -34,8 +34,8 @@ services:
     networks:
       - internal
     environment:
-      POSTGRES_USER: kanboard
-      POSTGRES_PASSWORD: kanboard-secret
+      POSTGRES_USER: ${KANBOARD_DB_USER}
+      POSTGRES_PASSWORD: ${KANBOARD_DB_PASSWORD}
       POSTGRES_DB: kanboard
     volumes:
       - db:/var/lib/postgresql
