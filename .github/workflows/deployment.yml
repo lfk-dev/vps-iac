@@ -45,23 +45,18 @@ jobs:
       - name: Template config files
         run: ./scripts/deployment/template.sh
 
-      - name: Debug
-        run: |
-          ls -la ./tmp/
-          echo $PROM_ALERT_DISCORD_WEBHOOK
-          tree -La 4 ./tmp/
-          cat ./tmp/prometheus/alertmanager/alertmanager.yml
-
         # rsync is a gold mine of options :)
         # 1. Execute with sudo on target for chown and chmod to work
         # 2. Don't preserve perms, set them on host
         # 3. Archive + delete, will overwrite/prune old files
+
+        # Permissions have to be explicitly stated for the others: Fo, Do
       - name: Copy the templated files under specific path
         run: |
           rsync -a --delete \
             --rsync-path="sudo rsync" \
-            --chown=${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} \
-            --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r \
+            --chown=1000:1000 \
+            --chmod=Du=rwx,Dg=rx,Do=,Fu=rw,Fg=r,Fo= \
             -e "ssh -p ${{ secrets.VPS_PORT }}" \
             ./tmp/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/etc/srv/
 
