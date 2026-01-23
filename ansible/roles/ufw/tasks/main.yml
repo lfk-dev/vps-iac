@@ -1,0 +1,43 @@
+---
+- name: Ensure UFW is on machine
+  apt:
+    name: ufw
+    state: present
+    update_cache: true
+
+# IMPORTANT: the playbook is deployed via SSH, so we should first allow SSH
+# then enable the ufw! The playbook may disconnect after last step (if the ports are mismatched)
+- name: Allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "{{ vault_vps_ssh_port | default(22) }}"
+    proto: tcp
+
+- name: Set default policy to deny incoming
+  community.general.ufw:
+    direction: incoming
+    default: deny
+
+- name: Set default policy to allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    default: allow
+
+- name: Get UFW status
+  command: ufw status verbose
+  register: ufw_status
+  changed_when: false # not register as change to the host
+  check_mode: false # run even in check mode
+
+- name: Show UFW rules
+  debug:
+    var: ufw_status.stdout_lines
+
+- name: Ensure UFW is enabled
+  ufw:
+    state: enabled
+    policy: deny
+# UFW rules are applied before and after user rules
+# UFW set's the sensible default rules first
+# This is why we don't need here to allow ICMP, loopback or established connections rules
+# The final state of the nftables on the host would be the result of the UFW defaults, user rules and docker engine rules.
