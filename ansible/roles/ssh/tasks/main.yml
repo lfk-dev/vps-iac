@@ -1,0 +1,31 @@
+---
+- name: Ensure openSSH is on machine
+  apt:
+    name: openssh-server
+    state: present
+    update_cache: true
+
+- name: Place the drop in file
+  template:
+    src: sshd.conf.j2
+    dest: /etc/ssh/sshd_config.d/01-sshd-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: sshd -t -f %s # the ssh will valide the config, if it fails, task fails, so the file is not copied
+  notify: Restart sshd # only restart the file is the file was changed
+
+# NOTE: in openssh, the drop-in configurations are stored in /etc/ssh/sshd_config.d/
+# the file is read in lexicographical order (00 wins with everything). Defaults usually start with 50- prefix.
+# The main config file is sourcing the whole directory at it's start, the rules that are set first win.
+
+- name: See the config
+  command: cat /etc/ssh/sshd_config.d/01-sshd-hardening.conf
+  register: sshd_config
+  changed_when: false # not register as change to the host
+  check_mode: false # run even in check mode
+  failed_when: false # command can fail, don't stop :)
+
+- name: Show SSH config
+  debug:
+    var: sshd_config.stdout_lines
