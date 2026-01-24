@@ -1,7 +1,19 @@
+# Docker .env
 .env*
 .*env
-secrets.txt
+
+# Internal TODO document
 TODO.md
-secrets.*
-*secrets.txt
-docs/
+
+# Secrets (files only, with extensions)
+**/*secrets*.
+*secrets.*
+
+# explicitly include the template
+!docs/secrets.yml.template
+
+# Terraform
+.terraform*
+*.tfstate*
+
+
