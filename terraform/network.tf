@@ -21,9 +21,10 @@ resource "aws_vpc" "main" {
 # That is also why there is no "router" resource, only routing table that is associated with subnet and internet gateway
 # subnet for VPC, that is public (allows for traffic outside VPC)
 resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true # Assign public IP to instances launched in this subnet
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
+  # map_public_ip_on_launch = true # Assign public IP to instances launched in this subnet
+  # Not needed, since we are using EIP
   tags = {
     Name = "${local.aws_tag}-public_subnet"
   }
@@ -92,4 +93,26 @@ resource "aws_route" "main" {
 resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.public.id    # which subnet
   route_table_id = aws_route_table.main.id # uses which route table
+}
+
+# NOTE: The domain is managed externally to terraform, but on AWS
+# It should be provided as a secret. TF will adjust the DNS records for the 
+# elastic IP and the subdomains.
+
+# get the zone ID from AWS based on provided domain name
+data "aws_route53_zone" "domain" {
+  name         = var.vps_domain
+  private_zone = false
+}
+
+# Create new records in that domain
+resource "aws_route53_record" "subdomains" {
+  for_each = var.services
+
+  zone_id = data.aws_route53_zone.domain.zone_id
+  name    = "${each.key}.${var.vps_domain}"
+  type    = "A"
+  ttl     = 60
+
+  records = [aws_eip.vps.public_ip]
 }

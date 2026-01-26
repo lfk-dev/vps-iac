@@ -7,5 +7,14 @@ terraform {
       version = "~> 6.0"
     }
   }
-  backend "local" {} # default
+
+  backend "s3" {
+    bucket = "terrafrom-vps-state"
+    key    = "envs/dev/terraform.tfstate" # the path to the state file in the bucket
+    # no locking file needed (solo project) but there could be dynamoDB configured here
+    region = "eu-central-1"
+    # credentials are in env vars
+  }
+
+
 }

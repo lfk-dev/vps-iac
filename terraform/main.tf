@@ -16,3 +16,14 @@ resource "aws_instance" "VPS" {
   # ssh key to use for access
   key_name = "aws_dev"
 }
+
+# specify an EIP in to be used inisde a VPC
+resource "aws_eip" "vps" {
+  domain = "vpc"
+}
+
+# Associate the EIP with the instace (more modular, but could be defined in aws_eip resource block)
+resource "aws_eip_association" "vps" {
+  instance_id   = aws_instance.VPS.id
+  allocation_id = aws_eip.vps.id
+}
