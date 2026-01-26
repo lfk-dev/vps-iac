@@ -6,8 +6,6 @@
 TODO.md
 
 # Secrets (files only, with extensions)
-**/*secrets*.
-*secrets.*
 
 # explicitly include the template
 !docs/secrets.yml.template
