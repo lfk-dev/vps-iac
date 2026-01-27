@@ -1,0 +1,5 @@
+---
+- name: Setup docker
+  hosts: stable
+  roles:
+    - docker
