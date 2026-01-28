@@ -11,7 +11,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - config:/etc/prometheus/:ro
     networks:
-      - monitoring # seperate monitoring network
       - proxy # traefik discovery network
     command:
       - "--storage.tsdb.retention.size=10GB" # max size of TSDB
@@ -30,6 +29,7 @@ services:
         condition: service_completed_successfully
   # Exporter mounts the node's directories that store OS information. Containerized exporter monitors those dirs and exposes API/metrics
   # The prometheus container scrapes the metrics from exporter container
+
   node-exporter:
     image: prom/node-exporter:latest # TODO: find specific version
     container_name: node-exporter
@@ -48,14 +48,13 @@ services:
     expose:
       - 9100 # not "ports", but "expose", because it's internal to monitoring network only
     networks:
-      - monitoring
+      - proxy
 
   alertmanager:
     image: prom/alertmanager:v0.30.1
     container_name: alertmanager
     restart: unless-stopped
     networks:
-      - monitoring
       - proxy
     volumes:
       - config:/etc/prometheus/:ro
@@ -94,9 +93,6 @@ volumes:
   alertmanager-data:
 
 networks:
-  monitoring:
-    name: monitoring
-    driver: bridge
   proxy:
     name: proxy
     external: true

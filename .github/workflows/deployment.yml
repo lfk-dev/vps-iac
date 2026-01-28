@@ -3,7 +3,7 @@
 
 # TODO: rollback and remove actions have to be adjusted to new
 # deploy script structure
-name: deployment
+name: Deployment
 
 on:
   workflow_dispatch:
@@ -22,38 +22,53 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      # setup the connection for docker client
-      DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
     steps:
       - name: Checkout
         with:
           fetch-depth: 2 # setup for roll-back
         uses: actions/checkout@v5
 
+      - name: Install rsync
+        run: apt update && apt install -y rsync
+
+      - name: Install envsubst
+        run: |
+          curl -L https://github.com/a8m/envsubst/releases/download/v1.2.0/envsubst-`uname -s`-`uname -m` -o envsubst
+          chmod +x envsubst
+          sudo mv envsubst /usr/local/bin
+
+      - name: Install SOPS
+        run: |
+          curl -LsS https://github.com/getsops/sops/releases/download/v3.9.4/sops_3.9.4_amd64.deb \
+            -o /tmp/sops.deb
+          sudo dpkg -i /tmp/sops.deb
+          sops --version
+
       - name: SSH setup
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_KEY_VPS }}" > ~/.ssh/id_ed25519
+          printf '%s' "${{ secrets.SSH_KEY_VPS}}" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
+          ssh -p "${{ secrets.VPS_PORT }}" -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }} true
 
-        # TODO: adjust composite actions to work this way (copy directroy structure + template)
-      - name: export secrets to env vars
+      - name: Decrypt config secrets
+        id: decrypt_config_secrets
+        uses: ./.github/actions/sops-decrypt/
+        with:
+          input_file: "configs/secrets.enc.env"
+          output_file: "secrets.env"
+          age_key: ${{ secrets.SOPS_SECRET_KEY }}
+
+      - name: Export config secrets to env vars for envsubst
+        run: cat ${{ steps.decrypt_config_secrets.outputs.output_file }} >> $GITHUB_ENV
+
+      # TODO: consider moving it to a composite action
+      - name: Template config files to `tmp/`
         run: |
-          printf '%s\n' '${{ secrets.BULK_CONFIG_VARS }}' >> $GITHUB_ENV
+          ./scripts/deployment/template.sh
 
-        # Templates the files and outputs in {{ github.workspace }}/tmp
-      - name: Template config files
-        run: ./scripts/deployment/template.sh
-
-        # rsync is a gold mine of options :)
-        # 1. Execute with sudo on target for chown and chmod to work
-        # 2. Don't preserve perms, set them on host
-        # 3. Archive + delete, will overwrite/prune old files
-
-        # Permissions have to be explicitly stated for the others: Fo, Do
-      - name: Copy the templated files under specific path
+      - name: Copy the templated files to remote host`
         run: |
           rsync -a --delete \
             --rsync-path="sudo rsync" \
@@ -61,36 +76,27 @@ jobs:
             --chmod=Du=rwx,Dg=rx,Do=,Fu=rw,Fg=r,Fo= \
             -e "ssh -p ${{ secrets.VPS_PORT }}" \
             ./tmp/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/etc/srv/
+      # TODO: Watch the changes of the config files, if new ones where updated, then restart the containers on deployment to read new configs
+      - name: Decrypt Docker Compose .env file
+        uses: ./.github/actions/sops-decrypt/
+        id: decrypt_docker_compose_env
+        with:
+          input_file: "docker/docker-compose.enc.env"
+          output_file: "docker/docker-compose.env"
+          age_key: ${{ secrets.SOPS_SECRET_KEY }}
 
-      # - name: Roll back
-      #   if: ${{ inputs.action == 'roll-back' }}
-      #   run: |
-      #     git checkout HEAD^
-
-      - name: Move secrets from GHA to .env
-        # this is safest way to handle special characters from .env file, especially $.
-        # otherwise I have to remeber to always escape any string with `$` in it
-        # docker compose does not respect single quotes and expands every literal
-        run: printf '%s\n' '${{ secrets.DC_ENV_FILE }}' | base64 -d > docker/.env
-
-      - name: Deploy
+      - name: Deploy via docker compose
         if: ${{ inputs.action == 'deploy' }}
         env:
-          VPS_SSH_PORT: ${{ secrets.VPS_PORT }}
-          VPS_SSH_USER: ${{ secrets.VPS_USER }}
-          VPS_DOMAIN: ${{ secrets.VPS_DOMAIN }}
+          DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
+          DC_ACTION: "up -d --remove-orphans " # --force-recreate will restart all containers, not only changed ones
+          COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
         run: ./scripts/deployment/deploy.sh
 
-        # ther are no NOT or OR functions in GHA
-        # this could be combined with Deploy step
-      # - name: Roll back
-      #   if: ${{ inputs.action == 'roll-back' }}
-      #   run: ./scripts/deployment/deploy.sh
-
-      # - name: Remove
-      #   if: ${{ inputs.action == 'remove' }}
-      #   run: ./scripts/deployment/remove.sh
-
-      # added security, although runners don't persist data
-      - name: Clean up
-        run: rm -f docker/.env
+      - name: Compose down
+        if: ${{ inputs.action == 'remove' }}
+        env:
+          DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
+          DC_ACTION: "down"
+          COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
+        run: ./scripts/deployment/deploy.sh

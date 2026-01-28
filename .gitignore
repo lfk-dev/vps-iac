@@ -6,9 +6,7 @@
 TODO.md
 
 # Secrets (files only, with extensions)
-
-# explicitly include the template
-!docs/secrets.yml.template
+.secrets
 
 # Terraform
 .terraform*

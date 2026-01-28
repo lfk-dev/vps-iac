@@ -1,0 +1,30 @@
+name: sops-decrypt
+description: Decrypts a file using sops
+
+inputs:
+  input_file:
+    description: Input file
+    required: true
+  output_file:
+    description: Output file
+    required: true
+  age_key:
+    description: Age key
+    required: true
+outputs:
+  output_file:
+    description: Output file
+    value: ${{ inputs.output_file }}
+
+runs:
+  using: composite
+  steps:
+    # Assumes the SOPS was installed in previous step
+    - name: Export SOPS_AGE_KEY
+      shell: bash
+      run: echo "SOPS_AGE_KEY=${{ inputs.age_key }}" >> $GITHUB_ENV
+
+    - name: Decrypt the file
+      shell: bash
+      run: |
+        sops decrypt ${{ inputs.input_file }} > ${{ GITHUB.WORKSPACE }}/${{ inputs.output_file }}
