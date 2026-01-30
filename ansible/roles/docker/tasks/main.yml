@@ -60,6 +60,6 @@
 - name: Add user to docker group
   become: true
   user:
-    name: "{{ vault_vps_ssh_user }}"
+    name: "{{ ansible_user }}"
     groups: docker
     append: true

@@ -1,9 +1,4 @@
-# Workflow for automatic deployment to VPS
-# It has to be triggered manually for safety, uses 3 options: deploy, roll-back and remove
-
-# TODO: rollback and remove actions have to be adjusted to new
-# deploy script structure
-name: Deployment
+name: Deploy to EC2
 
 on:
   workflow_dispatch:
@@ -13,7 +8,8 @@ on:
         required: true
         type: choice
         default: deploy
-        options: [deploy, roll-back, remove]
+        options: [deploy,  remove]
+
 
 concurrency:
   group: ${{ github.workflow }}
@@ -22,10 +18,15 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+        SSH_PORT: 22
+        SSH_USER: ubuntu
+        TARGET_HOST: bungux.click
+        SSH_KEY_B64: ${{ secrets.SSH_KEY_EC2 }}
+        SSH_KEY_PATH: ""
+        # adjust below there
     steps:
       - name: Checkout
-        with:
-          fetch-depth: 2 # setup for roll-back
         uses: actions/checkout@v5
 
       - name: Install rsync
@@ -46,11 +47,17 @@ jobs:
 
       - name: SSH setup
         run: |
+          set -x
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.SSH_KEY_VPS}}" | base64 -d > ~/.ssh/id_ed25519
+          printf '%s' "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${{ secrets.VPS_PORT }}" -H "${{ secrets.VPS_DOMAIN }}" >> ~/.ssh/known_hosts
-          ssh -p "${{ secrets.VPS_PORT }}" -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }} true
+          echo "SSH_KEY_PATH=~/.ssh/id_ed25519" >> $GITHUB_ENV
+          ssh-keyscan -p "$SSH_PORT" -H "$TARGET_HOST" >> ~/.ssh/known_hosts
+          ssh -p "$SSH_PORT" -o BatchMode=yes $SSH_USER@$TARGET_HOST true
+        
+      - name: Test docker connection
+        run: |
+          ssh -p $SSH_PORT $SSH_USER@$TARGET_HOST "docker ps"
 
       - name: Decrypt config secrets
         id: decrypt_config_secrets
@@ -64,20 +71,21 @@ jobs:
         run: cat ${{ steps.decrypt_config_secrets.outputs.output_file }} >> $GITHUB_ENV
 
       # TODO: consider moving it to a composite action
-      - name: Template config files to 'tmp/'
+      - name: Template config files to "tmp/"
         run: |
           ./scripts/deployment/template.sh
 
       - name: Copy the templated files to remote host
         run: |
+          set -x
           rsync -a --delete \
             --rsync-path="sudo rsync" \
             --chown=1000:1000 \
             --chmod=Du=rwx,Dg=rx,Do=,Fu=rw,Fg=r,Fo= \
-            -e "ssh -p ${{ secrets.VPS_PORT }}" \
-            ./tmp/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:/etc/srv/
+            -e "ssh -p ${SSH_PORT} -i ${SSH_KEY_PATH}" \
+            ./tmp/ "${SSH_USER}@${TARGET_HOST}:/etc/srv/"
       
-      # TODO: Watch the changes of the config files, if new ones where updated, then restart the containers on deployment to read new configs
+        # TODO: Watch the changes of the config files, if new ones where updated, then restart the containers on deployment to read new configs
       - name: Decrypt Docker Compose .env file
         uses: ./.github/actions/sops-decrypt/
         id: decrypt_docker_compose_env
@@ -86,18 +94,32 @@ jobs:
           output_file: "docker/docker-compose.env"
           age_key: ${{ secrets.SOPS_SECRET_KEY }}
 
+
+      - name: Debug Docker context
+        run: |
+            set -x
+            docker context ls
+            cat ~/.docker/config.json || true
+            cd docker 
+            docker context ls
+    
+
+
       - name: Deploy via docker compose
         if: ${{ inputs.action == 'deploy' }}
         env:
-          DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
-          DC_ACTION: "up -d --remove-orphans " # --force-recreate will restart all containers, not only changed ones
+          VPS_DOMAIN: ${{ env.TARGET_HOST  }}
+          DOCKER_HOST: "ssh://${{ env.SSH_USER }}@${{ env.TARGET_HOST }}:${{ env.SSH_PORT }}"
+          DC_ACTION: "up -d"
           COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
+          DOCKER_CONTEXT: default
         run: ./scripts/deployment/deploy.sh
 
       - name: Compose down
         if: ${{ inputs.action == 'remove' }}
         env:
-          DOCKER_HOST: ssh://${{ secrets.VPS_USER }}@${{ secrets.VPS_DOMAIN }}:${{ secrets.VPS_PORT }}
+          DOCKER_HOST: "ssh://${{ env.SSH_USER }}@${{ env.TARGET_HOST }}:${{ env.SSH_PORT }}"
           DC_ACTION: "down"
           COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
+          DOCKER_CONTEXT: default
         run: ./scripts/deployment/deploy.sh

@@ -71,7 +71,7 @@ services:
       - "--config.file=/etc/prometheus/alertmanager/alertmanager.yml"
 
   config-loader:
-    image: alpine
+    image: alpine:latest
     volumes:
       - config:/config
       - /etc/srv/prometheus/:/source/:ro

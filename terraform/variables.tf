@@ -2,7 +2,9 @@
 variable "services" {
   type = set(string)
   default = [
-    "traefik"
+    "traefik",
+    "whoami",
+    "kanboard"
   ]
 }
 

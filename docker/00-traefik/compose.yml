@@ -59,7 +59,7 @@ services:
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
 
   config-loader:
-    image: alpine
+    image: alpine:latest
     volumes:
       - config:/config
       - /etc/srv/traefik/:/source/:ro
