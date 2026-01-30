@@ -1,0 +1,42 @@
+name: Showcase automatic deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Action to perform
+        required: true
+        type: choice
+        default: deploy
+        options: [deploy, remove]
+        
+jobs:
+  provision:
+    uses: ./.github/workflows/terraform.yml
+    secrets: inherit
+    with:
+      action: ${{ inputs.action == 'deploy' && 'apply' || 'destroy' }}
+
+  configure:
+    needs: provision
+    if: ${{ inputs.action == 'deploy' }}
+    uses: ./.github/workflows/ansible.yml
+    secrets: inherit
+    with:
+      dynamic: true
+
+  deploy:
+    needs: configure
+    if: ${{ inputs.action == 'deploy' }}
+    uses: ./.github/workflows/deploy-ec2.yml
+    secrets: inherit
+    with:
+      action: deploy
+
+  undeploy:
+    needs: provision
+    if: ${{ inputs.action == 'remove' }}
+    uses: ./.github/workflows/deploy-ec2.yml
+    secrets: inherit
+    with:
+      action: remove
