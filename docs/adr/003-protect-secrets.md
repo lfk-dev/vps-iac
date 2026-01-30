@@ -1,6 +1,6 @@
 # Protecting and handling secrets
 
-## Status: Proposed, 2026-01-25
+## Status: Accepted, 2026-01-25
 
 ## Context
 
@@ -19,7 +19,7 @@ While configuring multiple tools like Ansible or Docker Compose, there is a need
      - Requires more integration (for every tool)
      - Costs money
 
-2. Single locally encrypted file, decrypted and parsed during deployment
+1. Single locally encrypted file, decrypted and parsed during deployment
 
    - **Pros**:
      - Simple mental model: one artifact to manage per environment
@@ -28,7 +28,7 @@ While configuring multiple tools like Ansible or Docker Compose, there is a need
      - Additional complexity when parsing the secrets into different files (for differnt tools)
      - Lack of transparancy: the files are not readable, there is an external template or docs file needed to list all needed secrets
 
-3. Mozilla SOPS
+1. Mozilla SOPS
 
    - **Pros**:
      - Git firendly, minimal diffs
@@ -48,9 +48,8 @@ I will protect all my secrets with SOPS, keeping them in the files tracked by gi
 ## Consequences
 
 - Implementation strategy:
-    - Set up the `age` backend 
-    - Encrypt existing secrets files for ansible, configs and docker compose
-    - Store the private key file securealy outside the repository
-    - Add pre-commit hook that verifies encryption of secrets files
+  - Set up the `age` backend
+  - Encrypt existing secrets files for ansible, configs and docker compose
+  - Store the private key file securealy outside the repository
+  - Add pre-commit hook that verifies encryption of secrets files
 - If the complexity of the project increases, the next step would be to upgrade to external secrets management
-
