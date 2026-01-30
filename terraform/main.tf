@@ -10,8 +10,8 @@ resource "aws_instance" "VPS" {
   }
   # The "glue" that connects the instance to be launched in the public subnet
   # with SG rules attached to it.
-  subnet_id       = aws_subnet.public.id
-  security_groups = [aws_security_group.main.id]
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.main.id]
 
   # ssh key to use for access
   key_name = "aws_dev"

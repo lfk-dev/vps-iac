@@ -116,3 +116,12 @@ resource "aws_route53_record" "subdomains" {
 
   records = [aws_eip.vps.public_ip]
 }
+
+resource "aws_route53_record" "root" {
+  zone_id = data.aws_route53_zone.domain.zone_id
+  name    = var.vps_domain
+  type    = "A"
+  ttl     = 60
+
+  records = [aws_eip.vps.public_ip]
+}
