@@ -3,7 +3,6 @@ set -euo pipefail
 
 # Templates every file under ./configs
 # Ran by the GHA runner, assumes working dir is the root of the repo
-
 REPO_ROOT=$(pwd)
 DEST_DIR="${REPO_ROOT}/tmp"
 

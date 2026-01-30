@@ -9,7 +9,11 @@ on:
         type: choice
         default: deploy
         options: [deploy,  remove]
-
+  workflow_call: # the types are limited: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_callinputs
+    inputs:
+      action:
+        required: true
+        type: string 
 
 concurrency:
   group: ${{ github.workflow }}
@@ -21,7 +25,7 @@ jobs:
     env:
         SSH_PORT: 22
         SSH_USER: ubuntu
-        TARGET_HOST: bungux.click
+        TARGET_HOST: ${{ secrets.VPS_DOMAIN_SECONDARY}}
         SSH_KEY_B64: ${{ secrets.SSH_KEY_EC2 }}
         SSH_KEY_PATH: ""
         # adjust below there
@@ -30,7 +34,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install rsync
-        run: apt update && apt install -y rsync
+        run: sudo apt update && sudo apt install -y rsync
 
       - name: Install envsubst
         run: |
@@ -47,7 +51,6 @@ jobs:
 
       - name: SSH setup
         run: |
-          set -x
           mkdir -p ~/.ssh
           printf '%s' "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
@@ -67,17 +70,18 @@ jobs:
           output_file: "secrets.env"
           age_key: ${{ secrets.SOPS_SECRET_KEY }}
 
-      - name: Export config secrets to env vars for envsubst
-        run: cat ${{ steps.decrypt_config_secrets.outputs.output_file }} >> $GITHUB_ENV
-
       # TODO: consider moving it to a composite action
       - name: Template config files to "tmp/"
         run: |
+          set +x 
+          set -a
+          source ${{ steps.decrypt_config_secrets.outputs.output_file }}
+          set +a
           ./scripts/deployment/template.sh
+        # no tracing, source the variables to env for that step only
 
       - name: Copy the templated files to remote host
         run: |
-          set -x
           rsync -a --delete \
             --rsync-path="sudo rsync" \
             --chown=1000:1000 \
@@ -94,17 +98,6 @@ jobs:
           output_file: "docker/docker-compose.env"
           age_key: ${{ secrets.SOPS_SECRET_KEY }}
 
-
-      - name: Debug Docker context
-        run: |
-            set -x
-            docker context ls
-            cat ~/.docker/config.json || true
-            cd docker 
-            docker context ls
-    
-
-
       - name: Deploy via docker compose
         if: ${{ inputs.action == 'deploy' }}
         env:
@@ -112,14 +105,13 @@ jobs:
           DOCKER_HOST: "ssh://${{ env.SSH_USER }}@${{ env.TARGET_HOST }}:${{ env.SSH_PORT }}"
           DC_ACTION: "up -d"
           COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
-          DOCKER_CONTEXT: default
         run: ./scripts/deployment/deploy.sh
 
       - name: Compose down
         if: ${{ inputs.action == 'remove' }}
         env:
+          VPS_DOMAIN: ${{ env.TARGET_HOST  }}
           DOCKER_HOST: "ssh://${{ env.SSH_USER }}@${{ env.TARGET_HOST }}:${{ env.SSH_PORT }}"
           DC_ACTION: "down"
           COMPOSE_ENV_FILES: ${{ steps.decrypt_docker_compose_env.outputs.output_file }}
-          DOCKER_CONTEXT: default
         run: ./scripts/deployment/deploy.sh

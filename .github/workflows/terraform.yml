@@ -11,6 +11,11 @@ on:
         options:
           - apply
           - destroy
+  workflow_call: # the types are limited: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_callinputs
+    inputs:
+      action:
+        required: true
+        type: string 
 
 jobs:
   terraform:
@@ -54,9 +59,6 @@ jobs:
       - name: Terraform Destroy
         if: inputs.action == 'destroy'
         run: terraform destroy -auto-approve
-
-      - name: Install dig DEBUG
-        run: sudo apt update && sudo apt install -y dnsutils
 
       # This is needed so ansible can resolve the domain name for the SSH connection
       # NOTE: this could be solved with passing the provisioned EIP to the ansible playbook

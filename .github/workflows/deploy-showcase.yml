@@ -33,10 +33,4 @@ jobs:
     with:
       action: deploy
 
-  undeploy:
-    needs: provision
-    if: ${{ inputs.action == 'remove' }}
-    uses: ./.github/workflows/deploy-ec2.yml
-    secrets: inherit
-    with:
-      action: remove
+  # no need to remove docker deployment, the workflow input "remove" destroys the whole infrastructure

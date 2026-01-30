@@ -52,8 +52,9 @@ main() {
     # Find all compose.yml in DOCKER_DIR
     while IFS= read -r -d '' file; do
         found=1
+        echo "file found=${file}"
         deploy_project "$file"
-    done < <(find "${DOCKER_DIR}" -type f -name "compose.yml" -print0 | sort) 
+    done < <(find "${DOCKER_DIR}" -type f -name "compose.yml" -print0 | sort -z) 
     # NOTE: the sort ensures that directories with "NN" like "00-traefik" are deployed first
     # this is a simple way to apply order to deployment, traefik set's up external networks for other containers
     
