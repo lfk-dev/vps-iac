@@ -1,6 +1,6 @@
 ---
 - name: Configure SSH
-  hosts: stable
+  hosts: all
   become: true
   roles:
     - ssh

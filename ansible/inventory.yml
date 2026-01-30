@@ -1,18 +1,17 @@
 ---
 # secrets handled with ansible vault
 
-stable: # main VPS I already bought
-  hosts:
-    vps-main:
-      ansible_user: "{{ vault_vps_ssh_user | default('root') }}"
-      ansible_port: "{{ vault_vps_ssh_port | default(22) }}"
-      ansible_host: "{{ vault_vps_main_ip }}"
-      ansible_ssh_private_key_file: "{{ vault_vps_ssh_key_path }}"
-
-dev: # for terraform provisioned VPS
-  hosts:
-    vps-test:
-      ansible_user: "{{ vault_vps_ssh_user | default('root') }}"
-      ansible_port: "{{ vault_vps_ssh_port | default(22) }}"
-      ansible_host: "{{ vault_vps_test_ip }}"
-      ansible_ssh_private_key_file: "{{ vault_vps_ssh_key_path }}"
+all:
+  children:
+    stable:
+      hosts:
+        vps-main:
+          ansible_user: "{{ vault_vps_ssh_user | default('root') }}"
+          ansible_port: "{{ vault_vps_ssh_port | default(22) }}"
+          ansible_host: "{{ vault_vps_main_domain }}"
+    instance:
+      hosts:
+        ec2:
+          ansible_user: ubuntu
+          ansible_port: 22
+          ansible_host: "{{ vault_vps_secondary_domain }}"

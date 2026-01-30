@@ -1,6 +1,6 @@
 ---
 - name: Configure UFW
-  hosts: stable
+  hosts: all
   become: true
   roles:
     - ufw

@@ -1,0 +1,82 @@
+# TODO: make use of variables to create nice interface (for providing the ansible secrets path, the playbooks to run)
+# TODO: later adjust it for single static host only
+name: Ansible
+
+on:
+  workflow_dispatch:
+    inputs:
+      dynamic:
+        description: True if the deployment is for an instance
+        required: false
+        type: boolean
+        default: false
+jobs:
+  deploy:
+    name: Configure VPS
+    runs-on: ubuntu-latest
+    env: # if the value is set to true, the env var is evaulated to the first provided value, if not it's the second
+      TARGET_HOST: ${{ inputs.dynamic && secrets.VPS_DOMAIN_SECONDARY || secrets.VPS_DOMAIN }}
+      SSH_KEY_B64: ${{ inputs.dynamic && secrets.SSH_KEY_EC2         || secrets.SSH_KEY_VPS }}
+      SSH_PORT:    ${{ inputs.dynamic && '22'                        || secrets.VPS_PORT }}
+      SSH_USER:    ${{ inputs.dynamic && 'ubuntu'                    || secrets.VPS_USER }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up SSH
+        run: |
+          set -euxo pipefail
+          printf '%s' "$SSH_KEY_B64" | base64 -d > private_key.pem
+          chmod 600 private_key.pem
+
+          echo "SSH_KEY_PATH=$GITHUB_WORKSPACE/private_key.pem" >> "$GITHUB_ENV"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p "$SSH_PORT" -H "$TARGET_HOST" >> ~/.ssh/known_hosts
+          
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Setup sops
+        uses: ./.github/actions/sops-setup
+
+      - name: Decrypt ansible secrets
+        uses: ./.github/actions/sops-decrypt
+        with:
+          input_file: "ansible/group_vars/all/secrets.sops.yml"
+          output_file: "ansible/group_vars/all/secrets.yml"
+          age_key: ${{ secrets.SOPS_SECRET_KEY }}
+
+
+      - name: Run Ansible Playbooks for static VPS
+        if: ${{ inputs.dynamic == false }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        working-directory: ansible
+        run: |
+          ansible-playbook -i inventory.yml --check --diff \
+            playbooks/fail2ban.yml \
+            playbooks/ufw.yml \
+            playbooks/docker.yml \
+            playbooks/ssh.yml \
+            playbooks/restic.yml \
+            --private-key "$SSH_KEY_PATH"
+
+      # Part of the showcase feature, like specified in docs/adr/004-limiting-terraform-to-showcase.md
+      - name: Run Ansible Playbooks for dynamic instance
+        if: ${{ inputs.dynamic == true }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        working-directory: ansible
+        run: |
+          ansible-playbook \
+            playbooks/docker.yml \
+            --private-key "$SSH_KEY_PATH" \
+            -i inventory.yml \
+            --limit ec2 \
+
+
+

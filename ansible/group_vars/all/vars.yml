@@ -1,0 +1,10 @@
+# configurable variables
+
+# fail2ban
+fail2ban_bantime: 600
+fail2ban_maxretry: 3
+fail2ban_findtime: 600
+
+# ssh
+ssh_password_auth: "no"
+#

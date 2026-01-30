@@ -1,5 +1,5 @@
 ---
 - name: restic init + cron job setup
-  hosts: stable
+  hosts: all
   roles:
     - restic

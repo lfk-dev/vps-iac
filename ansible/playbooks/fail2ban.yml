@@ -1,6 +1,6 @@
 ---
 - name: fail2ban config
-  hosts: stable
+  hosts: all
   become: true # all tasks actually need sudo, so it's still safe TODO: fix this and add privilage per task
   roles:
     - fail2ban
